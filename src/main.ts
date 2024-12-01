@@ -12,7 +12,10 @@ import luck from "./luck.ts";
 const APP_NAME = "GeoCoin";
 document.title = APP_NAME;
 
-const playerCoins = Array<Coin>();
+const localPlayerData = localStorage.getItem("playerCoin");
+const playerCoins: Array<Coin> = localPlayerData
+  ? JSON.parse(localPlayerData)
+  : [];
 const status = document.querySelector<HTMLDivElement>("#statusPanel")!;
 status.innerHTML = `You have ${playerCoins.length} coin(s)`;
 
@@ -26,10 +29,8 @@ interface Memento<T> {
   fromMemento(memento: T): void;
 }
 class Cache implements Memento<string> {
-  coordinates: Array<number>;
   coins: Array<Coin>;
-  constructor(i: number, j: number, coins: Array<Coin>) {
-    this.coordinates = [i, j];
+  constructor(coins: Array<Coin>) {
     this.coins = coins;
   }
   toMemento() {
@@ -47,7 +48,7 @@ const tileSize = 1e-4;
 const neighborhoodSize = 8;
 const cacheChance = 0.1;
 const coinCache = new Map<string, Cache>();
-const cacheMementos = new Map<string, string>();
+//const cacheMementos = new Map<string, string>();
 
 const map = leaflet.map("map", {
   center: playerLocation,
@@ -69,12 +70,14 @@ playerMarker.bindTooltip("You are Here");
 function playerController(dir: string, lat: number, lon: number) {
   const button = document.querySelector<HTMLDivElement>(dir)!;
   button.addEventListener("click", () => {
-    saveCache();
+    for (const [key, cache] of coinCache.entries()) {
+      saveCache(key, cache);
+    }
     playerLocation[0] += lat;
     playerLocation[1] += lon;
     playerMarker.setLatLng(playerLocation);
     map.removeLayer(cacheLayer);
-    restoreCache();
+    coinCache.clear();
     populateNeighborhood();
   });
 }
@@ -99,24 +102,23 @@ function getCell(lat: number, lon: number): Cache {
     for (let i = 0; i < Math.floor(luck([lat, lon].toString()) * 100); i++) {
       coins.push({ serial: `${key}#${i}` });
     }
-    cache = new Cache(lat, lon, coins);
+    cache = new Cache(coins);
     coinCache.set(key, cache);
   }
 
   return cache;
 }
 
-function saveCache() {
-  for (const [key, cache] of coinCache) {
-    cacheMementos.set(key, cache.toMemento());
-  }
+function saveCache(key: string, cache: Cache) {
+  localStorage.setItem(key, cache.toMemento());
 }
-function restoreCache() {
-  for (const [key, cache] of coinCache) {
-    const memento = cacheMementos.get(key);
-    if (memento) {
-      cache.fromMemento(memento);
-    }
+
+function restoreCache(key: string) {
+  const memento = localStorage.getItem(key);
+  if (memento) {
+    const cache = new Cache([]);
+    cache.fromMemento(memento);
+    coinCache.set(key, cache);
   }
 }
 
@@ -127,6 +129,7 @@ function cacheUpdate(add: Array<Coin>, remove: Array<Coin>) {
     console.log(coin.serial);
     add.push(coin);
     status.innerHTML = `You have ${playerCoins.length} coin(s)`;
+    localStorage.setItem("playerCoin", JSON.stringify(playerCoins));
   }
 }
 function spawnCache(y: number, x: number) {
@@ -140,6 +143,7 @@ function spawnCache(y: number, x: number) {
 
   // cache popup
   rect.bindPopup(() => {
+    restoreCache(getKey(y, x));
     const coinAmount = getCell(y, x).coins;
 
     const popup = document.createElement("div");
@@ -153,6 +157,7 @@ function spawnCache(y: number, x: number) {
         "click",
         () => {
           cacheUpdate(playerCoins, coinAmount);
+          saveCache(getKey(y, x), getCell(y, x));
           popup.querySelector<HTMLSpanElement>("#coin")!.innerHTML =
             `${coinAmount.length}`;
         },
@@ -162,6 +167,7 @@ function spawnCache(y: number, x: number) {
         "click",
         () => {
           cacheUpdate(coinAmount, playerCoins);
+          saveCache(getKey(y, x), getCell(y, x));
           popup.querySelector<HTMLSpanElement>("#coin")!.innerHTML =
             `${coinAmount.length}`;
         },
