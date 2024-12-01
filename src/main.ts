@@ -17,13 +17,28 @@ const status = document.querySelector<HTMLDivElement>("#statusPanel")!;
 status.innerHTML = `You have ${playerCoins.length} coin(s)`;
 
 //map info
-
 interface Coin {
   serial: string;
 }
-interface Cache {
+
+interface Memento<T> {
+  toMemento(): T;
+  fromMemento(memento: T): void;
+}
+class Cache implements Memento<string> {
   coordinates: Array<number>;
   coins: Array<Coin>;
+  constructor(i: number, j: number, coins: Array<Coin>) {
+    this.coordinates = [i, j];
+    this.coins = coins;
+  }
+  toMemento() {
+    return JSON.stringify({ coins: this.coins });
+  }
+  fromMemento(memento: string) {
+    const state = JSON.parse(memento);
+    this.coins = state.coins;
+  }
 }
 
 const zoomAmount = 19;
@@ -32,6 +47,7 @@ const tileSize = 1e-4;
 const neighborhoodSize = 8;
 const cacheChance = 0.1;
 const coinCache = new Map<string, Cache>();
+const cacheMementos = new Map<string, string>();
 
 const map = leaflet.map("map", {
   center: playerLocation,
@@ -53,10 +69,12 @@ playerMarker.bindTooltip("You are Here");
 function playerController(dir: string, lat: number, lon: number) {
   const button = document.querySelector<HTMLDivElement>(dir)!;
   button.addEventListener("click", () => {
+    saveCache();
     playerLocation[0] += lat;
     playerLocation[1] += lon;
     playerMarker.setLatLng(playerLocation);
     map.removeLayer(cacheLayer);
+    restoreCache();
     populateNeighborhood();
   });
 }
@@ -81,11 +99,25 @@ function getCell(lat: number, lon: number): Cache {
     for (let i = 0; i < Math.floor(luck([lat, lon].toString()) * 100); i++) {
       coins.push({ serial: `${key}#${i}` });
     }
-    cache = { coordinates: [lat, lon], coins: coins };
+    cache = new Cache(lat, lon, coins);
     coinCache.set(key, cache);
   }
 
   return cache;
+}
+
+function saveCache() {
+  for (const [key, cache] of coinCache) {
+    cacheMementos.set(key, cache.toMemento());
+  }
+}
+function restoreCache() {
+  for (const [key, cache] of coinCache) {
+    const memento = cacheMementos.get(key);
+    if (memento) {
+      cache.fromMemento(memento);
+    }
+  }
 }
 
 // updates cache according to player action
