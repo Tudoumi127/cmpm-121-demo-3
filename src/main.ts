@@ -44,9 +44,26 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
+let cacheLayer = leaflet.layerGroup().addTo(map);
+
 //player
 const playerMarker = leaflet.marker(playerLocation).addTo(map);
 playerMarker.bindTooltip("You are Here");
+
+function playerController(dir: string, lat: number, lon: number) {
+  const button = document.querySelector<HTMLDivElement>(dir)!;
+  button.addEventListener("click", () => {
+    playerLocation[0] += lat;
+    playerLocation[1] += lon;
+    playerMarker.setLatLng(playerLocation);
+    map.removeLayer(cacheLayer);
+    populateNeighborhood();
+  });
+}
+playerController("#north", tileSize, 0);
+playerController("#east", 0, tileSize);
+playerController("#south", -tileSize, 0);
+playerController("#west", 0, -tileSize);
 
 //functions
 
@@ -87,7 +104,7 @@ function spawnCache(y: number, x: number) {
     [y + tileSize, x + tileSize],
   );
   const rect = leaflet.rectangle(bounds);
-  rect.addTo(map);
+  rect.addTo(cacheLayer);
 
   // cache popup
   rect.bindPopup(() => {
@@ -123,6 +140,7 @@ function spawnCache(y: number, x: number) {
 }
 
 function populateNeighborhood() {
+  cacheLayer = leaflet.layerGroup().addTo(map);
   for (
     let y = playerLocation[0] - tileSize * neighborhoodSize;
     y < playerLocation[0] + tileSize * neighborhoodSize;
