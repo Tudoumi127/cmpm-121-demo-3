@@ -91,7 +91,7 @@ function spawnCache(y: number, x: number) {
 
   // cache popup
   rect.bindPopup(() => {
-    const coinAmount = getCell(y, x)!.coins;
+    const coinAmount = getCell(y, x).coins;
 
     const popup = document.createElement("div");
     popup.innerHTML = `
