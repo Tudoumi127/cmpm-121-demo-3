@@ -10,6 +10,10 @@ const APP_NAME = "GeoCoin";
 //const app = document.querySelector<HTMLDivElement>("#app")!;
 document.title = APP_NAME;
 
+let playerCoins = 0;
+const status = document.querySelector<HTMLDivElement>("#statusPanel")!;
+status.innerHTML = `You have ${playerCoins} coin(s)`;
+
 //map info
 const zoomAmount = 19;
 const playerLocation = [36.989498, -122.062777];
@@ -34,25 +38,54 @@ playerMarker.bindTooltip("You are Here");
 
 //functions
 function spawnCache(y: number, x: number) {
+  // create cache area
   const bounds = leaflet.latLngBounds(
     [y, x],
     [y + tileSize, x + tileSize],
   );
   const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
+  // cache popup
+  rect.bindPopup(() => {
+    let coinAmount = Math.floor(luck([y, x].toString()) * 100);
+    const popup = document.createElement("div");
+    popup.innerHTML = `
+          <div>There are <span id="coin">${coinAmount}</span> coin(s) here!</div>
+          <button id="poke">Poke</button>
+    `;
+    popup.querySelector<HTMLButtonElement>("#poke")!.addEventListener(
+      "click",
+      () => {
+        if (coinAmount > 0) {
+          coinAmount--;
+          playerCoins++;
+          popup.querySelector<HTMLSpanElement>("#coin")!.innerHTML =
+            `${coinAmount}`;
+          status.innerHTML = `You have ${playerCoins} coin(s)`;
+        }
+      },
+    );
+    return popup;
+  });
 }
-for (
-  let y = playerLocation[0] - tileSize * neighborhoodSize;
-  y < playerLocation[0] + tileSize * neighborhoodSize;
-  y += tileSize
-) {
+
+function populateNeighborhood() {
   for (
-    let x = playerLocation[1] - tileSize * neighborhoodSize;
-    x < playerLocation[1] + tileSize * neighborhoodSize;
-    x += tileSize
+    let y = playerLocation[0] - tileSize * neighborhoodSize;
+    y < playerLocation[0] + tileSize * neighborhoodSize;
+    y += tileSize
   ) {
-    if (luck([y, x].toString()) <= cacheChance) {
-      spawnCache(y, x);
+    for (
+      let x = playerLocation[1] - tileSize * neighborhoodSize;
+      x < playerLocation[1] + tileSize * neighborhoodSize;
+      x += tileSize
+    ) {
+      if (luck([y, x].toString()) <= cacheChance) {
+        spawnCache(y, x);
+      }
     }
   }
 }
+
+// call functions
+populateNeighborhood();
