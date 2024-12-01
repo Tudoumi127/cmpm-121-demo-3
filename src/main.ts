@@ -13,7 +13,7 @@ const APP_NAME = "GeoCoin";
 document.title = APP_NAME;
 
 const localPlayerData = localStorage.getItem("playerCoin");
-const playerCoins: Array<Coin> = localPlayerData
+let playerCoins: Array<Coin> = localPlayerData
   ? JSON.parse(localPlayerData)
   : [];
 const status = document.querySelector<HTMLDivElement>("#statusPanel")!;
@@ -43,12 +43,16 @@ class Cache implements Memento<string> {
 }
 
 const zoomAmount = 19;
-const playerLocation = [36.989498, -122.062777];
+const origin = [36.989498, -122.062777];
+let playerLocation = origin;
+const savedLocation = localStorage.getItem("playerLocation");
+if (savedLocation) {
+  playerLocation = JSON.parse(savedLocation);
+}
 const tileSize = 1e-4;
 const neighborhoodSize = 8;
 const cacheChance = 0.1;
 const coinCache = new Map<string, Cache>();
-//const cacheMementos = new Map<string, string>();
 
 const map = leaflet.map("map", {
   center: playerLocation,
@@ -75,10 +79,8 @@ function playerController(dir: string, lat: number, lon: number) {
     }
     playerLocation[0] += lat;
     playerLocation[1] += lon;
-    playerMarker.setLatLng(playerLocation);
-    map.removeLayer(cacheLayer);
-    coinCache.clear();
-    populateNeighborhood();
+    localStorage.setItem("playerLocation", JSON.stringify(playerLocation));
+    resetMap();
   });
 }
 playerController("#north", tileSize, 0);
@@ -132,6 +134,14 @@ function cacheUpdate(add: Array<Coin>, remove: Array<Coin>) {
     localStorage.setItem("playerCoin", JSON.stringify(playerCoins));
   }
 }
+
+function resetMap() {
+  playerMarker.setLatLng(playerLocation);
+  map.removeLayer(cacheLayer);
+  coinCache.clear();
+  populateNeighborhood();
+}
+
 function spawnCache(y: number, x: number) {
   // create cache area
   const bounds = leaflet.latLngBounds(
@@ -195,6 +205,15 @@ function populateNeighborhood() {
     }
   }
 }
+
+const reset = document.querySelector<HTMLDivElement>("#reset")!;
+reset.addEventListener("click", () => {
+  localStorage.clear();
+  playerCoins = [];
+  status.innerHTML = `You have 0 coin(s)`;
+  playerLocation = origin;
+  resetMap();
+});
 
 // call functions
 populateNeighborhood();
