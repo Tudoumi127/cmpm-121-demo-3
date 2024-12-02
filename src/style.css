@@ -70,7 +70,9 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
-
+.locating {
+  background-color: #b3e4ec;
+}
 #map-container {
   border-radius: 8px;
   outline: 15px solid rgb(102, 81, 81);
