@@ -44,7 +44,7 @@ class Cache implements Memento<string> {
 
 const zoomAmount = 19;
 const origin = [36.989498, -122.062777];
-let playerLocation = [origin[0], origin[1]];
+let playerLocation = [...origin];
 const savedLocation = localStorage.getItem("playerLocation");
 if (savedLocation) {
   playerLocation = JSON.parse(savedLocation);
@@ -75,6 +75,7 @@ let path: leaflet.latlng = [[...playerLocation]];
 const savedPath = localStorage.getItem("savedPath");
 if (savedPath) {
   path = JSON.parse(savedPath);
+  console.log("saved", path);
 }
 let polyline = leaflet.polyline(path, { color: "red" }).addTo(map);
 
@@ -220,14 +221,21 @@ function populateNeighborhood() {
 
 const reset = document.querySelector<HTMLDivElement>("#reset")!;
 reset.addEventListener("click", () => {
-  localStorage.clear();
-  playerCoins = [];
-  status.innerHTML = `You have 0 coin(s)`;
-  playerLocation = [origin[0], origin[1]];
-  resetMap();
-  polyline.removeFrom(map);
-  path = [[...playerLocation]];
-  polyline = leaflet.polyline(path, { color: "red" }).addTo(map);
+  const confirm = prompt(
+    "Are you sure you want to reset? All progress will be lost (yes/no)",
+  );
+  if (confirm == "yes") {
+    playerCoins = [];
+    status.innerHTML = `You have 0 coin(s)`;
+    playerLocation = [...origin];
+    resetMap();
+    if (polyline) {
+      polyline.removeFrom(map);
+    }
+    path = [[...origin]];
+    polyline = leaflet.polyline(path, { color: "red" }).addTo(map);
+    localStorage.clear();
+  }
 });
 
 const sensor = document.querySelector<HTMLDivElement>("#sensor")!;
