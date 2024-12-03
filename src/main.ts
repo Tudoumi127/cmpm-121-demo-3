@@ -65,6 +65,27 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
+//class to
+class MapService {
+  constructor(private map: leaflet.Map) {}
+
+  panTo(location: [number, number] | number[]) {
+    if (location.length === 2) { // Validate that it has exactly 2 elements
+      this.map.panTo([location[0], location[1]]); // Force it into a tuple
+    } else {
+      throw new Error(
+        "Invalid location. Expected exactly two numbers (latitude, longitude).",
+      );
+    }
+  }
+
+  removeLayer(layerGroup: leaflet.LayerGroup) {
+    this.map.removeLayer(layerGroup);
+  }
+}
+
+const mapService = new MapService(map);
+
 let cacheLayer = leaflet.layerGroup().addTo(map);
 
 //player
@@ -143,7 +164,7 @@ function cacheUpdate(add: Array<Coin>, remove: Array<Coin>) {
   }
 }
 
-function resetMap() {
+/*function resetMap() {
   path.push([...playerLocation]);
   localStorage.setItem("savedPath", JSON.stringify(path));
   polyline.setLatLngs(path);
@@ -153,6 +174,29 @@ function resetMap() {
   map.removeLayer(cacheLayer);
   coinCache.clear();
   populateNeighborhood();
+}*/
+
+function resetMap() {
+  updatePlayerState();
+  updateMapView();
+  clearCaches();
+  populateNeighborhood(); // repopulate map
+}
+
+function updatePlayerState() {
+  path.push([...playerLocation]);
+  localStorage.setItem("savedPath", JSON.stringify(path));
+  polyline.setLatLngs(path);
+}
+
+function updateMapView() {
+  mapService.panTo(playerLocation);
+  playerMarker.setLatLng(playerLocation);
+}
+
+function clearCaches() {
+  mapService.removeLayer(cacheLayer);
+  coinCache.clear();
 }
 
 function spawnCache(y: number, x: number) {
