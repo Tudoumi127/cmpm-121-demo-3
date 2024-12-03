@@ -70,8 +70,8 @@ class MapService {
   constructor(private map: leaflet.Map) {}
 
   panTo(location: [number, number] | number[]) {
-    if (location.length === 2) { // Validate that it has exactly 2 elements
-      this.map.panTo([location[0], location[1]]); // Force it into a tuple
+    if (location.length === 2) {
+      this.map.panTo([location[0], location[1]]);
     } else {
       throw new Error(
         "Invalid location. Expected exactly two numbers (latitude, longitude).",
@@ -116,6 +116,34 @@ playerController("#north", tileSize, 0);
 playerController("#east", 0, tileSize);
 playerController("#south", -tileSize, 0);
 playerController("#west", 0, -tileSize);
+
+// Event Emitter
+
+class EventEmitter {
+  private events: { [key: string]: Array<() => void> } = {};
+
+  // Method to add event listener
+  on(event: string, listener: () => void) {
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
+    this.events[event].push(listener);
+  }
+
+  // Trigger all listeners for an event
+  emit(event: string) {
+    if (this.events[event]) {
+      this.events[event].forEach((listener) => listener());
+    }
+  }
+}
+
+const emitter = new EventEmitter();
+
+emitter.on("playerMoved", updatePlayerState);
+emitter.on("playerMoved", updateMapView);
+emitter.on("playerMoved", clearCaches);
+emitter.on("playerMoved", populateNeighborhood);
 
 //functions
 
@@ -164,39 +192,27 @@ function cacheUpdate(add: Array<Coin>, remove: Array<Coin>) {
   }
 }
 
-/*function resetMap() {
-  path.push([...playerLocation]);
-  localStorage.setItem("savedPath", JSON.stringify(path));
-  polyline.setLatLngs(path);
-
-  map.panTo(playerLocation);
-  playerMarker.setLatLng(playerLocation);
-  map.removeLayer(cacheLayer);
-  coinCache.clear();
-  populateNeighborhood();
-}*/
-
 function resetMap() {
-  updatePlayerState();
-  updateMapView();
-  clearCaches();
-  populateNeighborhood(); // repopulate map
+  emitter.emit("playerMoved");
 }
 
 function updatePlayerState() {
   path.push([...playerLocation]);
   localStorage.setItem("savedPath", JSON.stringify(path));
   polyline.setLatLngs(path);
+  console.log("[Event] Player state updated");
 }
 
 function updateMapView() {
   mapService.panTo(playerLocation);
   playerMarker.setLatLng(playerLocation);
+  console.log("[Event] Map view updated.");
 }
 
 function clearCaches() {
   mapService.removeLayer(cacheLayer);
   coinCache.clear();
+  console.log("[Event] Caches cleared.");
 }
 
 function spawnCache(y: number, x: number) {
